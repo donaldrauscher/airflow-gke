@@ -1,0 +1,234 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-airflow
+data:
+  EXECUTOR: Celery
+  POSTGRES_USER: airflow
+  POSTGRES_DB: airflow
+  POSTGRES_HOST: postgres
+  POSTGRES_PORT: "5432"
+  REDIS_HOST: redis
+  REDIS_PORT: "6379"
+  FLOWER_PORT: "5555"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+spec:
+  type: LoadBalancer
+  selector:
+    app: airflow
+    tier: web
+  ports:
+    - name: web
+      port: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: flower
+spec:
+  type: LoadBalancer
+  selector:
+    app: airflow
+    tier: flower
+  ports:
+    - name: flower
+      port: 5555
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: postgres
+spec:
+  type: ClusterIP
+  selector:
+    app: airflow
+    tier: postgres
+  ports:
+    - name: postgres
+      port: 5432
+      protocol: TCP
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: redis
+spec:
+  type: ClusterIP
+  selector:
+    app: airflow
+    tier: redis
+  ports:
+    - name: redis
+      port: 6379
+---
+kind: Deployment
+apiVersion: extensions/v1beta1
+metadata:
+  name: postgres
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: airflow
+        tier: postgres
+    spec:
+      restartPolicy: Always
+      containers:
+        - name: cloudsql-proxy
+          image: gcr.io/cloudsql-docker/gce-proxy:1.11
+          command: ["/cloud_sql_proxy", "--dir=/cloudsql",
+                    "-instances=blog-180218:us-central1:airflow-db-test1=tcp:0.0.0.0:5432",
+                    "-credential_file=/secrets/cloudsql/credentials.json"]
+          ports:
+            - name: postgres
+              containerPort: 5432
+          volumeMounts:
+            - name: cloudsql-instance-credentials
+              mountPath: /secrets/cloudsql
+              readOnly: true
+            - name: ssl-certs
+              mountPath: /etc/ssl/certs
+            - name: cloudsql
+              mountPath: /cloudsql
+      volumes:
+        - name: cloudsql-instance-credentials
+          secret:
+            secretName: cloudsql-instance-credentials
+        - name: cloudsql
+          emptyDir:
+        - name: ssl-certs
+          hostPath:
+            path: /etc/ssl/certs
+---
+kind: Deployment
+apiVersion: extensions/v1beta1
+metadata:
+  name: redis
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: airflow
+        tier: redis
+    spec:
+      restartPolicy: Always
+      containers:
+        - name: redis
+          image: redis:3.0-alpine
+          ports:
+            - name: redis
+              containerPort: 6379
+          volumeMounts:
+            - name: redis-disk
+              mountPath: /data/redis
+      volumes:
+        - name: redis-disk
+          gcePersistentDisk:
+            pdName: airflow-redis-disk
+            fsType: ext4
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: web
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: airflow
+        tier: web
+    spec:
+      restartPolicy: Always
+      containers:
+      - name: web
+        image: puckel/docker-airflow:1.9.0
+        ports:
+          - name: web
+            containerPort: 8080
+        envFrom:
+        - configMapRef:
+            name: config-airflow
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 60
+          timeoutSeconds: 30
+        command: ["/entrypoint.sh"]
+        args:  ["webserver"]
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: scheduler
+spec:
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: airflow
+        tier: scheduler
+    spec:
+      restartPolicy: Always
+      containers:
+      - name: scheduler
+        image: puckel/docker-airflow:1.9.0
+        envFrom:
+        - configMapRef:
+            name: config-airflow
+        command: ["/entrypoint.sh"]
+        args:  ["scheduler"]
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: worker
+spec:
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: airflow
+        tier: worker
+    spec:
+      restartPolicy: Always
+      containers:
+      - name: worker
+        image: puckel/docker-airflow:1.9.0
+        envFrom:
+        - configMapRef:
+            name: config-airflow
+        command: ["/entrypoint.sh"]
+        args:  ["worker"]
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: flower
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: airflow
+        tier: flower
+    spec:
+      restartPolicy: Always
+      containers:
+      - name: flower
+        image: puckel/docker-airflow:1.9.0
+        ports:
+          - name: flower
+            containerPort: 5555
+        envFrom:
+        - configMapRef:
+            name: config-airflow
+        command: ["/entrypoint.sh"]
+        args:  ["flower"]
