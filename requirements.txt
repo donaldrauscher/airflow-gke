@@ -1,0 +1,5 @@
+apache-airflow[gcp_api]==1.9.0
+numpy==1.13.3
+pandas==0.21.0
+scikit-learn==0.19.1
+scipy==1.0.0

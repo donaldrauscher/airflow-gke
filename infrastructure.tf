@@ -31,7 +31,7 @@ resource "google_compute_disk" "airflow-redis-disk" {
 }
 
 resource "google_sql_database_instance" "airflow-db" {
-  name = "airflow-db-test1"
+  name = "airflow-db-test2"
   database_version = "POSTGRES_9_6"
   region = "${var.region}"
   settings {
@@ -57,5 +57,6 @@ resource "google_container_cluster" "airflow-cluster" {
   initial_node_count = "2"
   node_config {
     machine_type = "n1-standard-4"
+    oauth_scopes = ["https://www.googleapis.com/auth/devstorage.read_only"]
   }
 }
