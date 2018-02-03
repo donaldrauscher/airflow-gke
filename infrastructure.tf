@@ -54,7 +54,7 @@ resource "google_sql_user" "proxyuser" {
 resource "google_container_cluster" "airflow-cluster" {
   name = "airflow-cluster"
   zone = "${var.zone}"
-  initial_node_count = "2"
+  initial_node_count = "1"
   node_config {
     machine_type = "n1-standard-4"
     oauth_scopes = ["https://www.googleapis.com/auth/devstorage.read_only"]
