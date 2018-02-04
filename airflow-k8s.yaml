@@ -12,6 +12,7 @@ data:
   REDIS_PORT: "6379"
   FLOWER_PORT: "5555"
   LOAD_EX: "n"
+  FERNET_KEY: "LfvSws383r5VpIHXV1evFEzgyVqCXSQSuAOp0gHRANM="
   AIRFLOW__CORE__DAGS_FOLDER: "/git/git/dags/"
   AIRFLOW__CORE__PLUGINS_FOLDER: "/git/git/plugins/"
 ---
@@ -93,7 +94,7 @@ spec:
         - name: cloudsql-proxy
           image: gcr.io/cloudsql-docker/gce-proxy:1.11
           command: ["/cloud_sql_proxy", "--dir=/cloudsql",
-                    "-instances=blog-180218:us-central1:airflow-db-test2=tcp:0.0.0.0:5432",
+                    "-instances=blog-180218:us-central1:airflow-db=tcp:0.0.0.0:5432",
                     "-credential_file=/secrets/cloudsql/credentials.json"]
           ports:
             - name: postgres
@@ -230,7 +231,7 @@ kind: Deployment
 metadata:
   name: worker
 spec:
-  replicas: 3
+  replicas: 2
   template:
     metadata:
       labels:

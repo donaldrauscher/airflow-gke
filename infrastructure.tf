@@ -18,7 +18,7 @@ variable "zone" {
 }
 
 provider "google" {
-  version = "~> 1.4"
+  version = "~> 1.5"
   project = "${var.project}"
   region = "${var.region}"
 }
@@ -31,11 +31,11 @@ resource "google_compute_disk" "airflow-redis-disk" {
 }
 
 resource "google_sql_database_instance" "airflow-db" {
-  name = "airflow-db-test2"
+  name = "airflow-db"
   database_version = "POSTGRES_9_6"
   region = "${var.region}"
   settings {
-    tier = "db-f1-micro"
+    tier = "db-g1-small"
   }
 }
 
