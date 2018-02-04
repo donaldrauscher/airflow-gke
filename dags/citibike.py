@@ -34,7 +34,8 @@ class StationStatus(BaseOperator):
         ('is_renting', {'field_type':'INTEGER'}),
         ('is_returning', {'field_type':'INTEGER'}),
         ('last_reported', {'field_type':'INTEGER'}),
-        ('eightd_has_available_keys', {'field_type':'BOOLEAN'})
+        ('eightd_has_available_keys', {'field_type':'BOOLEAN'}),
+        ('timestamp', {'field_type':'DATETIME'})
     ]
 
     @apply_defaults
@@ -43,10 +44,16 @@ class StationStatus(BaseOperator):
         self.conn_id = conn_id
 
     def execute(self, context):
+
         # fetch data
         req = requests.get('https://gbfs.citibikenyc.com/gbfs/en/station_status.json')
         data = json.loads(req.text, object_pairs_hook=OrderedDict)
         data = data['data']['stations']
+
+        # add timestamps
+        ts = datetime.now()
+        for x in data:
+            x.update(timestamp=ts)
 
         # stream into BigQuery
         rows = [tuple(x.values()) for x in data]
