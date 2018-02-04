@@ -42,7 +42,7 @@ class GoogleCloudBaseHook(BaseHook, LoggingMixin):
             scopes = [s.strip() for s in scope.split(',')]
 
             self.log.info('Getting connection using a JSON key file.')
-            credentials = service_account.Credentials.from_service_account_file(key_path, scopes)
+            credentials = service_account.Credentials.from_service_account_file(key_path, scopes = scopes)
         else:
             if not scope:
                 raise AirflowException('Scope should be defined when using JSON key.')
@@ -52,7 +52,7 @@ class GoogleCloudBaseHook(BaseHook, LoggingMixin):
             keyfile_dict = json.loads(keyfile_dict)
             # depending on how the JSON was formatted, it may contain escaped newlines; onvert those to actual newlines
             keyfile_dict['private_key'] = keyfile_dict['private_key'].replace('\\n', '\n')
-            credentials = service_account.Credentials.from_service_account_info(keyfile_dict, scopes)
+            credentials = service_account.Credentials.from_service_account_info(keyfile_dict, scopes = scopes)
 
         return credentials
 
