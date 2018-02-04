@@ -11,15 +11,14 @@ from airflow.utils.decorators import apply_defaults
 
 default_args = {
     'owner': 'airflow',
-    'depends_on_past': False,
     'retries': 2,
-    'retry_delay': timedelta(minutes = 1),
-    'catchup': False
+    'retry_delay': timedelta(minutes = 1)
 }
 
 dag = DAG('citibike',
     start_date = datetime(2018, 1, 28),
     schedule_interval = '*/5 * * * *',
+    catchup = False,
     default_args = default_args)
 
 class StationStatus(BaseOperator):
