@@ -1,288 +1,293 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: config-airflow
-data:
-  EXECUTOR: Celery
-  POSTGRES_USER: airflow
-  POSTGRES_DB: airflow
-  POSTGRES_HOST: postgres
-  POSTGRES_PORT: "5432"
-  REDIS_HOST: redis
-  REDIS_PORT: "6379"
-  FLOWER_PORT: "5555"
-  LOAD_EX: "n"
-  FERNET_KEY: "LfvSws383r5VpIHXV1evFEzgyVqCXSQSuAOp0gHRANM="
-  AIRFLOW__CORE__DAGS_FOLDER: "/git/git/dags/"
-  AIRFLOW__CORE__PLUGINS_FOLDER: "/git/git/plugins/"
 ---
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: config-git-sync
-data:
-  GIT_SYNC_REPO: "https://github.com/donaldrauscher/airflow-gke.git"
-  GIT_SYNC_DEST: git
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: web
-spec:
-  type: LoadBalancer
-  selector:
-    app: airflow
-    tier: web
-  ports:
-    - name: web
-      port: 8080
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: flower
-spec:
-  type: LoadBalancer
-  selector:
-    app: airflow
-    tier: flower
-  ports:
-    - name: flower
-      port: 5555
----
-kind: Service
+kind: Template
 apiVersion: v1
 metadata:
-  name: postgres
-spec:
-  type: ClusterIP
-  selector:
-    app: airflow
-    tier: postgres
-  ports:
-    - name: postgres
-      port: 5432
-      protocol: TCP
----
-kind: Service
-apiVersion: v1
-metadata:
-  name: redis
-spec:
-  type: ClusterIP
-  selector:
-    app: airflow
-    tier: redis
-  ports:
-    - name: redis
-      port: 6379
----
-kind: Deployment
-apiVersion: extensions/v1beta1
-metadata:
-  name: postgres
-spec:
-  replicas: 1
-  template:
+  name: airflow-k8s-template
+parameters:
+  - name: PROJECT_ID
+    required: true
+    parameterType: string
+  - name: FERNET_KEY
+    required: true
+    parameterType: string
+  - name: DAG_REPO
+    required: true
+    parameterType: string
+objects:
+  - apiVersion: v1
+    kind: ConfigMap
     metadata:
-      labels:
-        app: airflow
-        tier: postgres
+      name: config-airflow
+    data:
+      EXECUTOR: Celery
+      POSTGRES_USER: airflow
+      POSTGRES_DB: airflow
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      FLOWER_PORT: "5555"
+      LOAD_EX: "n"
+      FERNET_KEY: "$(FERNET_KEY)"
+      AIRFLOW__CORE__DAGS_FOLDER: "/git/git/dags/"
+      AIRFLOW__CORE__PLUGINS_FOLDER: "/git/git/plugins/"
+  - apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: config-git-sync
+    data:
+      GIT_SYNC_REPO: "$(DAG_REPO)"
+      GIT_SYNC_DEST: git
+  - apiVersion: v1
+    kind: Service
+    metadata:
+      name: web
     spec:
-      restartPolicy: Always
-      containers:
-        - name: cloudsql-proxy
-          image: gcr.io/cloudsql-docker/gce-proxy:1.11
-          command: ["/cloud_sql_proxy", "--dir=/cloudsql",
-                    "-instances=blog-180218:us-central1:airflow-db=tcp:0.0.0.0:5432",
-                    "-credential_file=/secrets/cloudsql/credentials.json"]
-          ports:
-            - name: postgres
-              containerPort: 5432
-          volumeMounts:
-            - name: cloudsql-instance-credentials
-              mountPath: /secrets/cloudsql
-              readOnly: true
-            - name: ssl-certs
-              mountPath: /etc/ssl/certs
-            - name: cloudsql
-              mountPath: /cloudsql
-      volumes:
-        - name: cloudsql-instance-credentials
-          secret:
-            secretName: cloudsql-instance-credentials
-        - name: cloudsql
-          emptyDir:
-        - name: ssl-certs
-          hostPath:
-            path: /etc/ssl/certs
----
-kind: Deployment
-apiVersion: extensions/v1beta1
-metadata:
-  name: redis
-spec:
-  replicas: 1
-  template:
-    metadata:
-      labels:
-        app: airflow
-        tier: redis
-    spec:
-      restartPolicy: Always
-      containers:
-        - name: redis
-          image: redis:3.0-alpine
-          ports:
-            - name: redis
-              containerPort: 6379
-          volumeMounts:
-            - name: redis-disk
-              mountPath: /data/redis
-      volumes:
-        - name: redis-disk
-          gcePersistentDisk:
-            pdName: airflow-redis-disk
-            fsType: ext4
----
-apiVersion: extensions/v1beta1
-kind: Deployment
-metadata:
-  name: web
-spec:
-  replicas: 1
-  template:
-    metadata:
-      labels:
+      type: LoadBalancer
+      selector:
         app: airflow
         tier: web
-    spec:
-      restartPolicy: Always
-      containers:
+      ports:
         - name: web
-          image: gcr.io/blog-180218/airflow-gke:latest
-          ports:
-            - name: web
-              containerPort: 8080
-          volumeMounts:
-          - name: dagbag
-            mountPath: /git
-          envFrom:
-          - configMapRef:
-              name: config-airflow
-          livenessProbe:
-            httpGet:
-              path: /health
-              port: 8080
-            initialDelaySeconds: 60
-            timeoutSeconds: 30
-          command: ["/entrypoint.sh"]
-          args:  ["webserver"]
-        - name: git-sync
-          image: gcr.io/google_containers/git-sync:v2.0.4
-          volumeMounts:
-          - name: dagbag
-            mountPath: /git
-          envFrom:
-          - configMapRef:
-              name: config-git-sync
-      volumes:
-        - name: dagbag
-          emptyDir: {}
----
-apiVersion: extensions/v1beta1
-kind: Deployment
-metadata:
-  name: scheduler
-spec:
-  replicas: 1
-  template:
+          port: 8080
+  - apiVersion: v1
+    kind: Service
     metadata:
-      labels:
-        app: airflow
-        tier: scheduler
+      name: flower
     spec:
-      restartPolicy: Always
-      containers:
-        - name: scheduler
-          image: gcr.io/blog-180218/airflow-gke:latest
-          volumeMounts:
-          - name: dagbag
-            mountPath: /git
-          envFrom:
-          - configMapRef:
-              name: config-airflow
-          command: ["/entrypoint.sh"]
-          args:  ["scheduler"]
-        - name: git-sync
-          image: gcr.io/google_containers/git-sync:v2.0.4
-          volumeMounts:
-          - name: dagbag
-            mountPath: /git
-          envFrom:
-          - configMapRef:
-              name: config-git-sync
-      volumes:
-        - name: dagbag
-          emptyDir: {}
----
-apiVersion: extensions/v1beta1
-kind: Deployment
-metadata:
-  name: worker
-spec:
-  replicas: 2
-  template:
-    metadata:
-      labels:
-        app: airflow
-        tier: worker
-    spec:
-      restartPolicy: Always
-      containers:
-        - name: worker
-          image: gcr.io/blog-180218/airflow-gke:latest
-          volumeMounts:
-          - name: dagbag
-            mountPath: /git
-          envFrom:
-          - configMapRef:
-              name: config-airflow
-          command: ["/entrypoint.sh"]
-          args:  ["worker"]
-        - name: git-sync
-          image: gcr.io/google_containers/git-sync:v2.0.4
-          volumeMounts:
-          - name: dagbag
-            mountPath: /git
-          envFrom:
-          - configMapRef:
-              name: config-git-sync
-      volumes:
-        - name: dagbag
-          emptyDir: {}
----
-apiVersion: extensions/v1beta1
-kind: Deployment
-metadata:
-  name: flower
-spec:
-  replicas: 1
-  template:
-    metadata:
-      labels:
+      type: LoadBalancer
+      selector:
         app: airflow
         tier: flower
+      ports:
+        - name: flower
+          port: 5555
+  - kind: Service
+    apiVersion: v1
+    metadata:
+      name: postgres
     spec:
-      restartPolicy: Always
-      containers:
-      - name: flower
-        image: gcr.io/blog-180218/airflow-gke:latest
-        ports:
+      type: ClusterIP
+      selector:
+        app: airflow
+        tier: postgres
+      ports:
+        - name: postgres
+          port: 5432
+          protocol: TCP
+  - kind: Service
+    apiVersion: v1
+    metadata:
+      name: redis
+    spec:
+      type: ClusterIP
+      selector:
+        app: airflow
+        tier: redis
+      ports:
+        - name: redis
+          port: 6379
+  - kind: Deployment
+    apiVersion: extensions/v1beta1
+    metadata:
+      name: postgres
+    spec:
+      replicas: 1
+      template:
+        metadata:
+          labels:
+            app: airflow
+            tier: postgres
+        spec:
+          restartPolicy: Always
+          containers:
+            - name: cloudsql-proxy
+              image: gcr.io/cloudsql-docker/gce-proxy:1.11
+              command: ["/cloud_sql_proxy", "--dir=/cloudsql",
+                        "-instances=$(PROJECT_ID):us-central1:airflow-db=tcp:0.0.0.0:5432",
+                        "-credential_file=/secrets/cloudsql/credentials.json"]
+              ports:
+                - name: postgres
+                  containerPort: 5432
+              volumeMounts:
+                - name: cloudsql-instance-credentials
+                  mountPath: /secrets/cloudsql
+                  readOnly: true
+                - name: ssl-certs
+                  mountPath: /etc/ssl/certs
+                - name: cloudsql
+                  mountPath: /cloudsql
+          volumes:
+            - name: cloudsql-instance-credentials
+              secret:
+                secretName: cloudsql-instance-credentials
+            - name: cloudsql
+              emptyDir:
+            - name: ssl-certs
+              hostPath:
+                path: /etc/ssl/certs
+  - kind: Deployment
+    apiVersion: extensions/v1beta1
+    metadata:
+      name: redis
+    spec:
+      replicas: 1
+      template:
+        metadata:
+          labels:
+            app: airflow
+            tier: redis
+        spec:
+          restartPolicy: Always
+          containers:
+            - name: redis
+              image: redis:3.0-alpine
+              ports:
+                - name: redis
+                  containerPort: 6379
+              volumeMounts:
+                - name: redis-disk
+                  mountPath: /data/redis
+          volumes:
+            - name: redis-disk
+              gcePersistentDisk:
+                pdName: airflow-redis-disk
+                fsType: ext4
+  - apiVersion: extensions/v1beta1
+    kind: Deployment
+    metadata:
+      name: web
+    spec:
+      replicas: 1
+      template:
+        metadata:
+          labels:
+            app: airflow
+            tier: web
+        spec:
+          restartPolicy: Always
+          containers:
+            - name: web
+              image: gcr.io/$(PROJECT_ID)/airflow-gke:latest
+              ports:
+                - name: web
+                  containerPort: 8080
+              volumeMounts:
+              - name: dagbag
+                mountPath: /git
+              envFrom:
+              - configMapRef:
+                  name: config-airflow
+              livenessProbe:
+                httpGet:
+                  path: /health
+                  port: 8080
+                initialDelaySeconds: 60
+                timeoutSeconds: 30
+              command: ["/entrypoint.sh"]
+              args:  ["webserver"]
+            - name: git-sync
+              image: gcr.io/google_containers/git-sync:v2.0.4
+              volumeMounts:
+              - name: dagbag
+                mountPath: /git
+              envFrom:
+              - configMapRef:
+                  name: config-git-sync
+          volumes:
+            - name: dagbag
+              emptyDir: {}
+  - apiVersion: extensions/v1beta1
+    kind: Deployment
+    metadata:
+      name: scheduler
+    spec:
+      replicas: 1
+      template:
+        metadata:
+          labels:
+            app: airflow
+            tier: scheduler
+        spec:
+          restartPolicy: Always
+          containers:
+            - name: scheduler
+              image: gcr.io/$(PROJECT_ID)/airflow-gke:latest
+              volumeMounts:
+              - name: dagbag
+                mountPath: /git
+              envFrom:
+              - configMapRef:
+                  name: config-airflow
+              command: ["/entrypoint.sh"]
+              args:  ["scheduler"]
+            - name: git-sync
+              image: gcr.io/google_containers/git-sync:v2.0.4
+              volumeMounts:
+              - name: dagbag
+                mountPath: /git
+              envFrom:
+              - configMapRef:
+                  name: config-git-sync
+          volumes:
+            - name: dagbag
+              emptyDir: {}
+  - apiVersion: extensions/v1beta1
+    kind: Deployment
+    metadata:
+      name: worker
+    spec:
+      replicas: 2
+      template:
+        metadata:
+          labels:
+            app: airflow
+            tier: worker
+        spec:
+          restartPolicy: Always
+          containers:
+            - name: worker
+              image: gcr.io/$(PROJECT_ID)/airflow-gke:latest
+              volumeMounts:
+              - name: dagbag
+                mountPath: /git
+              envFrom:
+              - configMapRef:
+                  name: config-airflow
+              command: ["/entrypoint.sh"]
+              args:  ["worker"]
+            - name: git-sync
+              image: gcr.io/google_containers/git-sync:v2.0.4
+              volumeMounts:
+              - name: dagbag
+                mountPath: /git
+              envFrom:
+              - configMapRef:
+                  name: config-git-sync
+          volumes:
+            - name: dagbag
+              emptyDir: {}
+  - apiVersion: extensions/v1beta1
+    kind: Deployment
+    metadata:
+      name: flower
+    spec:
+      replicas: 1
+      template:
+        metadata:
+          labels:
+            app: airflow
+            tier: flower
+        spec:
+          restartPolicy: Always
+          containers:
           - name: flower
-            containerPort: 5555
-        envFrom:
-        - configMapRef:
-            name: config-airflow
-        command: ["/entrypoint.sh"]
-        args:  ["flower"]
+            image: gcr.io/$(PROJECT_ID)/airflow-gke:latest
+            ports:
+            - name: flower
+              containerPort: 5555
+            envFrom:
+            - configMapRef:
+                name: config-airflow
+            command: ["/entrypoint.sh"]
+            args:  ["flower"]

@@ -1,6 +1,4 @@
-variable "project" {
-  default = "blog-180218"
-}
+variable "project" {}
 
 variable "postgres_user" {
   default = "airflow"

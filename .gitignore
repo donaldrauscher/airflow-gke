@@ -1,3 +1,4 @@
 .keys/**
 terraform.tf*
 .terraform/**
+fernet.key
