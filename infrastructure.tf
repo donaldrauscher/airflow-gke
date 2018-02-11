@@ -21,6 +21,10 @@ provider "google" {
   region = "${var.region}"
 }
 
+resource "google_compute_global_address" "airflow-static-ip" {
+  name = "airflow-static-ip"
+}
+
 resource "google_compute_disk" "airflow-redis-disk" {
   name  = "airflow-redis-disk"
   type  = "pd-ssd"

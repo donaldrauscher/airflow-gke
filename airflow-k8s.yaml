@@ -6,6 +6,10 @@ parameters:
   - name: PROJECT_ID
     required: true
     parameterType: string
+  - name: DOMAIN
+    required: true
+    parameterType: string
+    value: airflow.donaldrauscher.com
   - name: FERNET_KEY
     required: true
     parameterType: string
@@ -37,12 +41,34 @@ objects:
     data:
       GIT_SYNC_REPO: "$(DAG_REPO)"
       GIT_SYNC_DEST: git
+  - apiVersion: extensions/v1beta1
+    kind: Ingress
+    metadata:
+      name: ingress
+      annotations:
+        kubernetes.io/ingress.global-static-ip-name: airflow-static-ip
+    spec:
+      tls:
+      - secretName: cloudiap
+      rules:
+      - host: web.$(DOMAIN)
+        http:
+          paths:
+          - backend:
+              serviceName: web
+              servicePort: 8080
+      - host: flower.$(DOMAIN)
+        http:
+          paths:
+          - backend:
+              serviceName: flower
+              servicePort: 5555
   - apiVersion: v1
     kind: Service
     metadata:
       name: web
     spec:
-      type: LoadBalancer
+      type: NodePort
       selector:
         app: airflow
         tier: web
@@ -54,7 +80,7 @@ objects:
     metadata:
       name: flower
     spec:
-      type: LoadBalancer
+      type: NodePort
       selector:
         app: airflow
         tier: flower
@@ -178,6 +204,12 @@ objects:
               - configMapRef:
                   name: config-airflow
               livenessProbe:
+                httpGet:
+                  path: /health
+                  port: 8080
+                initialDelaySeconds: 60
+                timeoutSeconds: 30
+              readinessProbe:
                 httpGet:
                   path: /health
                   port: 8080
