@@ -8,10 +8,9 @@ Note: To run Citibike example pipeline, will need to create a Service Account wi
 
 ## Deploy Instructions
 
-### (1) Store project id, git repo, and Fernet key as env variables; create SSL cert / key
+### (1) Store project id and Fernet key as env variables; create SSL cert / key
 ```
 export PROJECT_ID=$(gcloud config get-value project -q)
-export DAG_REPO=$(git remote get-url --all origin)
 
 if [ ! -f '.keys/fernet.key' ]; then
   export FERNET_KEY=$(python -c "from cryptography.fernet import Fernet; FERNET_KEY = Fernet.generate_key().decode(); print(FERNET_KEY)")
@@ -54,6 +53,5 @@ kubectl create secret tls cloudiap \
 
 ktmpl airflow-k8s.yaml \
   --parameter PROJECT_ID ${PROJECT_ID} \
-  --parameter FERNET_KEY ${FERNET_KEY} \
-  --parameter DAG_REPO ${DAG_REPO} | kubectl apply -f -
+  --parameter FERNET_KEY ${FERNET_KEY} | kubectl apply -f -
 ```

@@ -6,16 +6,17 @@ parameters:
   - name: PROJECT_ID
     required: true
     parameterType: string
+  - name: FERNET_KEY
+    required: true
+    parameterType: string
   - name: DOMAIN
     required: true
     parameterType: string
     value: airflow.donaldrauscher.com
-  - name: FERNET_KEY
-    required: true
-    parameterType: string
   - name: DAG_REPO
     required: true
     parameterType: string
+    value: https://github.com/donaldrauscher/airflow-gke.git
 objects:
   - apiVersion: v1
     kind: ConfigMap
