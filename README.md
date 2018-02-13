@@ -2,7 +2,7 @@
 
 ## About
 
-I leveraged [an awesome Docker image with Airflow](https://github.com/puckel/docker-airflow).  Terraform for managing GCP infrastructure.  Postgres instance on CloudSQL for the Airflow meta database. Used [`ktmpl`](https://github.com/jimmycuadra/ktmpl) for performing parameter substitutions in Kubernetes manifest.  Also used [git-sync](https://github.com/kubernetes/git-sync) sidecar container to continuously sync DAGs and plugins on running cluster, so only need to rebuild Docker image when changing Python environment.
+I leveraged [an awesome Docker image with Airflow](https://github.com/puckel/docker-airflow).  Terraform for managing GCP infrastructure.  Postgres instance on CloudSQL for the Airflow meta database. I used [git-sync](https://github.com/kubernetes/git-sync) sidecar container to continuously sync DAGs and plugins on running cluster, so only need to rebuild Docker image when changing Python environment.  Packaged all Kubernetes resources in [a Helm chart](https://helm.sh/).  
 
 Note: To run Citibike example pipeline, will need to create a Service Account with BigQuery access and add to the `google_cloud_default` [Connection](https://airflow.apache.org/concepts.html#connections) in Airflow UI.
 
@@ -54,8 +54,4 @@ kubectl create secret tls cloudiap \
 helm install . \
   --set projectId=${PROJECT_ID} \
   --set fernetKey=${FERNET_KEY}
-
-ktmpl airflow-k8s.yaml \
-  --parameter PROJECT_ID ${PROJECT_ID} \
-  --parameter FERNET_KEY ${FERNET_KEY} | kubectl apply -f -
 ```
