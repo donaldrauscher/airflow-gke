@@ -4,6 +4,10 @@
 
 I leveraged [an awesome Docker image with Airflow](https://github.com/puckel/docker-airflow).  Terraform for managing GCP infrastructure.  Postgres instance on CloudSQL for the Airflow meta database. I used [git-sync](https://github.com/kubernetes/git-sync) sidecar container to continuously sync DAGs and plugins on running cluster, so only need to rebuild Docker image when changing Python environment.  Packaged all Kubernetes resources in [a Helm chart](https://helm.sh/).  
 
+Note: Having a self-signed cert is obviously far from ideal.  However, I only set up HTTPS because I secured my instance with [Cloud IAP](https://cloud.google.com/iap/), which requires a HTTPS load balancer.
+
+TODO: Implement something like [this](https://github.com/jetstack/kube-lego) to automatically request certificates from [Let's Encrypt](https://letsencrypt.org/).
+
 Note: To run Citibike example pipeline, will need to create a Service Account with BigQuery access and add to the `google_cloud_default` [Connection](https://airflow.apache.org/concepts.html#connections) in Airflow UI.
 
 ## Deploy Instructions
