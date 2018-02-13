@@ -11,7 +11,7 @@ data:
   REDIS_HOST: redis
   REDIS_PORT: "6379"
   FLOWER_PORT: "5555"
-  {{- if .Values.FernetKey }}
+  {{- if .Values.fernetKey }}
   FERNET_KEY: {{ .Values.fernetKey }}
   {{- end }}
   AIRFLOW__CORE__DAGS_FOLDER: "/git/git/dags/"
