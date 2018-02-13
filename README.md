@@ -51,6 +51,10 @@ kubectl create secret generic cloudsql-instance-credentials \
 kubectl create secret tls cloudiap \
   --cert=.keys/tls.crt --key=.keys/tls.key
 
+helm install . \
+  --set projectId=${PROJECT_ID} \
+  --set fernetKey=${FERNET_KEY}
+
 ktmpl airflow-k8s.yaml \
   --parameter PROJECT_ID ${PROJECT_ID} \
   --parameter FERNET_KEY ${FERNET_KEY} | kubectl apply -f -

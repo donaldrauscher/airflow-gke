@@ -1,0 +1,22 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: ingress
+  annotations:
+    kubernetes.io/ingress.global-static-ip-name: airflow-static-ip
+spec:
+  tls:
+  - secretName: cloudiap
+  rules:
+  - host: web.{{ .Values.domain }}
+    http:
+      paths:
+      - backend:
+          serviceName: web
+          servicePort: 8080
+  - host: flower.{{ .Values.domain }}
+    http:
+      paths:
+      - backend:
+          serviceName: flower
+          servicePort: 5555

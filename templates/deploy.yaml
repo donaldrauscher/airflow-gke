@@ -1,0 +1,11 @@
+{{- $_ := set .Values.web "projectId" .Values.projectId }}
+{{- template "airflow" .Values.web }}
+---
+{{- $_ := set .Values.scheduler "projectId" .Values.projectId }}
+{{- template "airflow" .Values.scheduler }}
+---
+{{- $_ := set .Values.workers "projectId" .Values.projectId }}
+{{- template "airflow" .Values.workers }}
+---
+{{- $_ := set .Values.flower "projectId" .Values.projectId }}
+{{- template "airflow" .Values.flower }}

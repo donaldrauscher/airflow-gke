@@ -1,0 +1,20 @@
+
+dagRepo: https://github.com/donaldrauscher/airflow-gke.git
+domain: airflow.donaldrauscher.com
+
+web:
+  name: web
+  commandArgs: ["webserver"]
+
+scheduler:
+  name: scheduler
+  commandArgs: ["scheduler"]
+
+workers:
+  name: worker
+  replicas: 2
+  commandArgs: ["worker"]
+
+flower:
+  name: flower
+  commandArgs: ["flower"]
