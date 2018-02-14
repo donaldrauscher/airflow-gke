@@ -38,7 +38,7 @@ gcloud docker -- push gcr.io/${PROJECT_ID}/airflow-gke
 
 ### (3) Create infrastructure with Terraform
 ```
-terraform apply -var $(printf 'project=%s' $PROJECT_ID)
+terraform apply -var project=${PROJECT_ID}
 ```
 
 ### (4) Deploy on Kubernetes
