@@ -13,7 +13,8 @@ Note: To run Citibike example pipeline, will need to create a Service Account wi
 ## Deploy Instructions
 
 ### (1) Store project id and Fernet key as env variables; create SSL cert / key
-```
+
+``` bash
 export PROJECT_ID=$(gcloud config get-value project -q)
 
 if [ ! -f '.keys/fernet.key' ]; then
@@ -30,22 +31,20 @@ openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
 ```
 
 ### (2) Create Docker image and upload to Google Container Repository
-```
+
+``` bash
 docker build -t airflow-gke:latest .
 docker tag airflow-gke gcr.io/${PROJECT_ID}/airflow-gke:latest
 gcloud docker -- push gcr.io/${PROJECT_ID}/airflow-gke
 ```
 
 ### (3) Create infrastructure with Terraform
-```
+
+Note: You will also need to create a Service Account for the CloudSQL proxy in Kubernetes.  Create that (Role = "Cloud SQL Client"), download the JSON key, and attach as secret.  Stored in `.keys/airflow-cloudsql.json` in this example.
+
+``` bash
 terraform apply -var project=${PROJECT_ID}
-```
 
-### (4) Deploy on Kubernetes
-
-Note: You will also need to create a Service Account for the CloudSQL proxy in Kubernetes.  Create that (Role = "Cloud SQL Client") and download the JSON key.  Stored in `.keys/airflow-cloud.json` in this example.
-
-```
 gcloud container clusters get-credentials airflow-cluster
 gcloud config set container/cluster airflow-cluster
 
@@ -55,6 +54,12 @@ kubectl create secret generic cloudsql-instance-credentials \
 kubectl create secret tls cloudiap \
   --cert=.keys/tls.crt --key=.keys/tls.key
 
+helm init
+```
+
+### (4) Deploy with Kubernetes
+
+``` bash
 helm install . \
   --set projectId=${PROJECT_ID} \
   --set fernetKey=${FERNET_KEY}
