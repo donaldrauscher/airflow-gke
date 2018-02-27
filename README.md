@@ -2,17 +2,13 @@
 
 ## About
 
-I leveraged [an awesome Docker image with Airflow](https://github.com/puckel/docker-airflow).  Terraform for managing GCP infrastructure.  Postgres instance on CloudSQL for the Airflow meta database. I used [git-sync](https://github.com/kubernetes/git-sync) sidecar container to continuously sync DAGs and plugins on running cluster, so only need to rebuild Docker image when changing Python environment.  Packaged all Kubernetes resources in [a Helm chart](https://helm.sh/).  
-
-Note: Having a self-signed cert is obviously far from ideal.  However, I only set up HTTPS because I secured my instance with [Cloud IAP](https://cloud.google.com/iap/), which requires a HTTPS load balancer.
-
-TODO: Implement something like [this](https://github.com/jetstack/kube-lego) to automatically request certificates from [Let's Encrypt](https://letsencrypt.org/).
+I leveraged [an awesome Docker image with Airflow](https://github.com/puckel/docker-airflow).  Terraform for managing GCP infrastructure.  Postgres instance on CloudSQL for the Airflow meta database. I used [git-sync](https://github.com/kubernetes/git-sync) sidecar container to continuously sync DAGs and plugins on running cluster, so only need to rebuild Docker image when changing Python environment.  Packaged all Kubernetes resources in [a Helm chart](https://helm.sh/).  I also used the [kube-lego](https://github.com/kubernetes/charts/tree/master/stable/kube-lego) chart to automatically request TLS certificates for my Ingress (I secured my instance with [Cloud IAP](https://cloud.google.com/iap/), which requires a HTTPS load balancer).
 
 Note: To run Citibike example pipeline, will need to create a Service Account with BigQuery access and add to the `google_cloud_default` [Connection](https://airflow.apache.org/concepts.html#connections) in Airflow UI.
 
 ## Deploy Instructions
 
-### (1) Store project id and Fernet key as env variables; create SSL cert / key
+### (1) Store project id and Fernet key as env variables
 
 ``` bash
 export PROJECT_ID=$(gcloud config get-value project -q)
@@ -23,11 +19,6 @@ if [ ! -f '.keys/fernet.key' ]; then
 else
   export FERNET_KEY=$(cat .keys/fernet.key)
 fi
-
-openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-  -keyout .keys/tls.key \
-  -out .keys/tls.crt \
-  -subj "/CN=cloudiap/O=cloudiap"
 ```
 
 ### (2) Create Docker image and upload to Google Container Repository
@@ -51,15 +42,14 @@ gcloud config set container/cluster airflow-cluster
 kubectl create secret generic cloudsql-instance-credentials \
   --from-file=credentials.json=.keys/airflow-cloudsql.json
 
-kubectl create secret tls cloudiap \
-  --cert=.keys/tls.crt --key=.keys/tls.key
-
 helm init
 ```
 
 ### (4) Deploy with Kubernetes
 
 ``` bash
+helm install -f lego_values.yaml stable/kube-lego
+
 helm install . \
   --set projectId=${PROJECT_ID} \
   --set fernetKey=${FERNET_KEY}

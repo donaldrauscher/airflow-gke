@@ -1,0 +1,4 @@
+
+config:
+  LEGO_EMAIL: donald.rauscher@gmail.com
+  LEGO_URL: https://acme-v01.api.letsencrypt.org/directory
